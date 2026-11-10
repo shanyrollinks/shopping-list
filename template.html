@@ -111,7 +111,7 @@
   <p class="sub">__SUB__ <span id="week"></span></p>
   <div class="bar">
     <div class="tabs" role="group" aria-label="מצב">
-      <button class="tab" id="tab-home" aria-pressed="true">בדיקה בבית</button>
+      <button class="tab" id="tab-home" aria-pressed="true">מה חסר בבית</button>
       <button class="tab" id="tab-store" aria-pressed="false">בחנות</button>
     </div>
     <div class="stat" id="stat"></div>
@@ -184,7 +184,7 @@
     var banner = $("banner");
     var bannerParts = [];
     if (state.checkedAt) {
-      bannerParts.push("הבדיקה בבית הושלמה ב-" + new Date(state.checkedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }));
+      bannerParts.push("בדיקת מה חסר בבית הושלמה ב-" + new Date(state.checkedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }));
     }
     if (needN.length) {
       bannerParts.push((needN.length === 1 ? "חסר " : "חסרים ") + cnt(needN.length) + (est ? ", הערכת עלות: בערך " + est + " ₪" : ""));
@@ -251,7 +251,7 @@
       }
       html += "</section>";
     });
-    if (!html) html = '<div class="empty">' + (ui.mode === "store" ? "עוד לא סימנת מה חסר. עברי ל\"בדיקה בבית\" וסמני." : "אין מוצרים להצגה.") + "</div>";
+    if (!html) html = '<div class="empty">' + (ui.mode === "store" ? "עוד לא סומן מה חסר. עוברים ל\"מה חסר בבית\" ומסמנים." : "אין מוצרים להצגה.") + "</div>";
     $("list").innerHTML = html;
     document.body.className = "mode-" + ui.mode;
   }
@@ -276,7 +276,7 @@
         if (unsub) { unsub(); unsub = null; }
         ref = null;
         try { localStorage.setItem("shopping-state", JSON.stringify(snapshot())); } catch (e2) {}
-        setStatus("השמירה המשותפת נדחתה. בעל הדף צריך לתת לחשבון הזה הרשאת Editor בתפריט Share. בינתיים הסימונים נשמרים רק כאן.");
+        setStatus("השמירה המשותפת נדחתה. בעל הדף צריך לתת לחשבון הזה הרשאת Editor בתפריט Share (שיתוף). בינתיים הסימונים נשמרים רק כאן.");
       }
     }
     writing = false;
@@ -365,7 +365,7 @@
 
   render();
   setStatus("טוען את הרשימה השמורה...");
-  var loadTimer = setTimeout(function () { setStatus("עדיין לא הצלחתי להגיע לשמירה. מה שתסמני יישמר כשהחיבור יחזור."); }, 10000);
+  var loadTimer = setTimeout(function () { setStatus("עדיין לא הצלחתי להגיע לשמירה. מה שסומן יישמר כשהחיבור יחזור."); }, 10000);
   function fallbackLocal() {
     clearTimeout(loadTimer);
     try { var raw = localStorage.getItem("shopping-state"); if (raw) applyRemote(JSON.parse(raw)); } catch (e) {}
