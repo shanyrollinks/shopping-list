@@ -100,6 +100,9 @@
   details.import { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
   details.import summary { cursor: pointer; font-weight: 500; }
   details.import textarea { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .paid { display: block; margin: 10px 0; font-size: .9rem; }
+  .paid input { width: 6.5em; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card, transparent); color: inherit; font: inherit; }
+  .hrow { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: .9rem; text-align: right; }
   .danger-zone { margin-top: 96px; padding-top: 20px; border-top: 1px dashed var(--line); text-align: center; }
   #status { color: var(--muted); font-size: .85rem; min-height: 1.3em; margin-top: 12px; }
   h3 { margin: 22px 0 6px; font-size: 1rem; }
@@ -112,7 +115,7 @@
   <div class="bar">
     <div class="tabs" role="group" aria-label="מצב">
       <button class="tab" id="tab-home" aria-pressed="true">מה חסר בבית</button>
-      <button class="tab" id="tab-store" aria-pressed="false">בחנות</button>
+      <button class="tab" id="tab-store" aria-pressed="false">אני בסופר</button>
     </div>
     <div class="stat" id="stat"></div>
   </div>
@@ -131,10 +134,8 @@
     <button class="chip" id="restore" hidden>לשחזר מוצרים שהוסרו</button>
   </div>
   <div id="status" role="status"></div>
-  <div class="danger-zone">
-    <p class="hint">רק כשמתחילים שבוע חדש: מנקה את כל הסימונים, ההערות והכמויות.</p>
-    <button class="chip warn" id="reset">שבוע חדש: לנקות הכול</button>
-  </div>
+  <div class="danger-zone" id="finish" hidden>
+    <div id="history"></div>
 </main>
 
 <script>
@@ -160,7 +161,7 @@
     return parts.length ? '<br><span class="meta">' + parts.join(" · ") + "</span>" : "";
   }
 
-  var state = { need: {}, got: {}, custom: [], week: "", checkedAt: "", notes: {}, qty: {}, deleted: {} };
+  var state = { need: {}, got: {}, custom: [], week: "", checkedAt: "", notes: {}, qty: {}, deleted: {}, history: [] };
   var ui = { mode: "home", showRare: true, collapsed: {}, armed: "", armTimer: null };
   var ref = null, writing = false, dirty = false, unsub = null;
   var $ = function (id) { return document.getElementById(id); };
@@ -254,9 +255,11 @@
     if (!html) html = '<div class="empty">' + (ui.mode === "store" ? "עוד לא סומן מה חסר. עוברים ל\"מה חסר בבית\" ומסמנים." : "אין מוצרים להצגה.") + "</div>";
     $("list").innerHTML = html;
     document.body.className = "mode-" + ui.mode;
+    renderHistory();
+    $("finish").hidden = ui.mode !== "store";
   }
 
-  function snapshot() { return { need: state.need, got: state.got, custom: state.custom, week: state.week, checkedAt: state.checkedAt, notes: state.notes, qty: state.qty, deleted: state.deleted }; }
+  function snapshot() { return { need: state.need, got: state.got, custom: state.custom, week: state.week, checkedAt: state.checkedAt, notes: state.notes, qty: state.qty, deleted: state.deleted, history: state.history }; }
   function persist() {
     dirty = true;
     if (!ref) {
@@ -283,7 +286,7 @@
   }
   function applyRemote(src) {
     var d = JSON.parse(JSON.stringify(src || {})); // shared snapshots are read-only; always work on a copy
-    state.need = d.need || {}; state.got = d.got || {}; state.custom = d.custom || []; state.week = d.week || ""; state.checkedAt = d.checkedAt || ""; state.notes = d.notes || {}; state.qty = d.qty || {}; state.deleted = d.deleted || {};
+    state.need = d.need || {}; state.got = d.got || {}; state.custom = d.custom || []; state.week = d.week || ""; state.checkedAt = d.checkedAt || ""; state.notes = d.notes || {}; state.qty = d.qty || {}; state.deleted = d.deleted || {}; state.history = d.history || [];
   }
 
   $("list").addEventListener("change", function (e) {
@@ -353,14 +356,36 @@
     $("add-name").value = ""; render(); persist();
   });
 
+  function renderHistory() {
+    var h = state.history || [], box = $("history");
+    if (!h.length) { box.innerHTML = ""; return; }
+    box.innerHTML = '<h3>קניות קודמות</h3>' + h.slice(0, 5).map(function (e) {
+      var money = e.paid ? " · שולם " + fmt(e.paid) + " ₪" : (e.est ? " · הערכה " + e.est + " ₪" : "");
+      var left = e.left && e.left.length ? '<br><span class="meta">לא נקנו: ' + e.left.map(esc).join(", ") + "</span>" : "";
+      return '<div class="hrow">' + new Date(e.d).toLocaleDateString("he-IL") + ": נקנו " + e.b + " מתוך " + e.n + money + left + "</div>";
+    }).join("");
+  }
+
   var armed = false, armTimer = null;
   $("reset").onclick = function () {
     var b = $("reset");
-    if (!armed) { armed = true; b.textContent = "לוחצים שוב כדי לנקות"; armTimer = setTimeout(function () { armed = false; b.textContent = "שבוע חדש: לנקות הכול"; }, 4000); return; }
-    clearTimeout(armTimer); armed = false; b.textContent = "שבוע חדש: לנקות הכול";
-    state.need = {}; state.got = {}; state.checkedAt = ""; state.notes = {}; state.qty = {};
+    if (!armed) { armed = true; b.textContent = "לוחצים שוב כדי לסיים"; armTimer = setTimeout(function () { armed = false; b.textContent = "סיימתי קניות"; }, 4000); return; }
+    clearTimeout(armTimer); armed = false; b.textContent = "סיימתי קניות";
+    var items = allItems();
+    var needed = items.filter(function (i) { return state.need[i.id]; });
+    if (!needed.length) { setStatus("אין מה לשמור: עוד לא סומן שום מוצר."); return; }
+    var bought = needed.filter(function (i) { return state.got[i.id]; });
+    var left = needed.filter(function (i) { return !state.got[i.id]; });
+    var paid = parseFloat($("paid").value);
+    var entry = { d: new Date().toISOString(), n: needed.length, b: bought.length, left: left.map(function (i) { return i.n; }).slice(0, 30), est: Math.round(estimate(bought)), paid: isFinite(paid) && paid > 0 ? paid : null };
+    state.history = [entry].concat(state.history || []).slice(0, 20);
+    var need = {}, notes = {}, qty = {};
+    left.forEach(function (i) { need[i.id] = true; if (state.notes[i.id]) notes[i.id] = state.notes[i.id]; if (state.qty[i.id] != null) qty[i.id] = state.qty[i.id]; });
+    state.need = need; state.got = {}; state.notes = notes; state.qty = qty; state.checkedAt = "";
     state.week = new Date().toLocaleDateString("he-IL");
+    $("paid").value = "";
     ui.mode = "home"; render(); persist();
+    setStatus("הקנייה נשמרה. " + (left.length ? "נשארו מסומנים " + cnt(left.length) + " שלא נקנו." : "הכול נקנה."));
   };
 
   render();
