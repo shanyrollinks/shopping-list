@@ -4,3 +4,4 @@ __pycache__/
 receipt*.json
 items.json
 curated.json
+!example/receipt-*.json
