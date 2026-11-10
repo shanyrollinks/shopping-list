@@ -1,0 +1,394 @@
+<title>רשימת קניות שבועית</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout concept: a market-stall checklist, one column of aisles in walking order, two modes: check at home, shop in store. */
+  :root {
+    --bg: #f5f7f4;
+    --surface: #ffffff;
+    --ink: #17261f;
+    --muted: #5d6f66;
+    --line: #dde5df;
+    --accent: #1d7a55;
+    --accent-ink: #ffffff;
+    --need: #c2452d;
+    --need-bg: #fbece8;
+    --done: #8a9a91;
+    --font: "Rubik", "Arial Hebrew", Arial, sans-serif;
+    --radius: 10px;
+    --home: #2457c5; --home-ink: #ffffff;
+    --store: #1d7a55; --store-ink: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101a15; --surface: #18251e; --ink: #e6efe9; --muted: #93a79b; --line: #2a3b32;
+      --accent: #4fc08d; --accent-ink: #0b1a12; --need: #ff8d73; --need-bg: #36201b; --done: #6d8277;
+      --home: #7aa2ff; --home-ink: #0b1630; --store: #4fc08d; --store-ink: #0b1a12;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101a15; --surface: #18251e; --ink: #e6efe9; --muted: #93a79b; --line: #2a3b32;
+    --accent: #4fc08d; --accent-ink: #0b1a12; --need: #ff8d73; --need-bg: #36201b; --done: #6d8277;
+      --home: #7aa2ff; --home-ink: #0b1630; --store: #4fc08d; --store-ink: #0b1a12;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.5;
+    padding-block: 20px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.7rem; line-height: 1.2; margin: 0 0 4px; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: .95rem; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+  .tab { font: inherit; border: 0; background: none; color: var(--muted); padding: 8px 16px; border-radius: 999px; cursor: pointer; font-weight: 500; }
+  .tab[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .stat { margin-inline-start: auto; color: var(--muted); font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .stat b { color: var(--ink); }
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip { font: inherit; font-size: .88rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .chip.warn { border-color: var(--need); color: var(--need); }
+  .hint { margin: 0 0 10px; color: var(--muted); font-size: .92rem; }
+  .banner { margin-bottom: 12px; padding: 10px 14px; border-radius: var(--radius); background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  section.aisle { margin-bottom: 18px; }
+  .aisle h2 { font-size: 1.05rem; margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; }
+  .aisle h2 small { color: var(--muted); font-weight: 400; font-size: .82rem; font-variant-numeric: tabular-nums; }
+  ul { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  li { border-top: 1px solid var(--line); }
+  li:first-child { border-top: 0; }
+  label.row { display: flex; gap: 12px; align-items: center; padding: 11px 14px; cursor: pointer; min-height: 52px; }
+  input[type="checkbox"] { width: 24px; height: 24px; accent-color: var(--accent); flex: none; margin: 0; }
+  .mode-home input[type="checkbox"] { accent-color: var(--need); }
+  .txt { flex: 1; min-width: 0; }
+  .name { font-weight: 500; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+  .tag { font-size: .72rem; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; flex: none; }
+  .tag.t1 { color: var(--accent); border-color: var(--accent); }
+  li.is-need { background: var(--need-bg); }
+  li.is-got .name { text-decoration: line-through; color: var(--done); }
+  li.is-got .meta { color: var(--done); }
+  .empty { background: var(--surface); border: 1px dashed var(--line); border-radius: var(--radius); padding: 24px 16px; text-align: center; color: var(--muted); }
+  .add { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+  .add input[type="text"], .add select { font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); min-width: 0; }
+  .add input[type="text"] { flex: 1 1 160px; }
+  .btn { font: inherit; border: 0; background: var(--accent); color: var(--accent-ink); padding: 9px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .foot { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  a.chip { text-decoration: none; display: inline-block; }
+  .extra { display: flex; gap: 8px; align-items: center; margin: 0 14px 10px; }
+  input.note { flex: 1; min-width: 0; font: inherit; font-size: .88rem; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  input.note::placeholder { color: var(--muted); opacity: .7; }
+  label.qty { display: flex; align-items: center; gap: 4px; flex: none; font-size: .8rem; color: var(--muted); cursor: default; }
+  input.qtyin { width: 64px; font: inherit; font-size: .88rem; padding: 6px 6px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  button.del { flex: none; font: inherit; font-size: .8rem; border: 1px solid var(--line); background: none; color: var(--muted); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  button.del.armed { border-color: var(--need); color: var(--need); font-weight: 600; }
+  .aisle h2 { margin: 0 0 6px; }
+  button.aisle-toggle { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: 8px; align-items: baseline; cursor: pointer; font-size: 1.05rem; font-weight: 700; padding: 6px 2px; }
+  button.aisle-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+  button.aisle-toggle small { color: var(--muted); font-weight: 400; font-size: .82rem; font-variant-numeric: tabular-nums; }
+  .chev { color: var(--accent); width: 1em; display: inline-block; }
+  /* Each mode has its own color: blue while checking at home, green while shopping in the store. */
+  body.mode-home { --accent: var(--home); --accent-ink: var(--home-ink); }
+  body.mode-store { --accent: var(--store); --accent-ink: var(--store-ink); }
+  button.aisle-toggle { color: var(--accent); border-bottom: 2px solid var(--accent); margin-bottom: 4px; }
+  button.aisle-toggle small { color: var(--muted); }
+  details.import { margin-top: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+  details.import summary { cursor: pointer; font-weight: 500; }
+  details.import textarea { width: 100%; font: inherit; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); }
+  .danger-zone { margin-top: 96px; padding-top: 20px; border-top: 1px dashed var(--line); text-align: center; }
+  #status { color: var(--muted); font-size: .85rem; min-height: 1.3em; margin-top: 12px; }
+  h3 { margin: 22px 0 6px; font-size: 1rem; }
+  @media (prefers-reduced-motion: no-preference) { li { transition: background .15s; } }
+</style>
+
+<main dir="rtl" lang="he" id="app">
+  <h1>רשימת קניות שבועית</h1>
+  <p class="sub">__SUB__ <span id="week"></span></p>
+  <div class="bar">
+    <div class="tabs" role="group" aria-label="מצב">
+      <button class="tab" id="tab-home" aria-pressed="true">בדיקה בבית</button>
+      <button class="tab" id="tab-store" aria-pressed="false">בחנות</button>
+    </div>
+    <div class="stat" id="stat"></div>
+  </div>
+  <p class="hint" id="hint"></p>
+  <div class="banner" id="banner" hidden></div>
+  <div class="tools" id="tools"></div>
+  <div id="list"></div>
+  <p class="hint">__HINT__</p>
+  <h3>להוסיף מוצר</h3>
+  <form class="add" id="add">
+    <input type="text" id="add-name" placeholder="שם המוצר, למשל חומוס" aria-label="שם המוצר">
+    <select id="add-sec" aria-label="מחלקה"></select>
+    <button class="btn" type="submit">הוסף</button>
+  </form>
+  <div class="foot">
+    <button class="chip" id="restore" hidden>לשחזר מוצרים שהוסרו</button>
+  </div>
+  <div id="status" role="status"></div>
+  <div class="danger-zone">
+    <p class="hint">רק כשמתחילים שבוע חדש: מנקה את כל הסימונים, ההערות והכמויות.</p>
+    <button class="chip warn" id="reset">שבוע חדש: לנקות הכול</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var SECTIONS = /*__SECTIONS__*/;
+  var TIERS = { 1:"קבוע", 2:"ברוב השבועות", 3:"חצי מהשבועות", 4:"לפעמים", 5:"חדש" };
+  // [section, name, quantity/notes, tier]
+  var RAW = /*__RAW__*/;
+  // Ids stay stable across edits: entries without an explicit id keep their original numbered slot.
+  var slot = 0;
+  var ITEMS = RAW.map(function (r) { return { id: r[4] || "i" + (slot++), s: r[0], n: r[1], q: r[2], t: r[3] }; });
+  // name: [price paid in the receipts, unit, typical quantity used for the estimate]
+  var PRICES = /*__PRICES__*/;
+  function fmt(p) { return (Math.round(p * 100) / 100).toFixed(2); }
+  function cnt(n) { return n === 1 ? "מוצר אחד" : n + " מוצרים"; }
+  function qtyOf(i) { var p = PRICES[i.n]; var q = state.qty[i.id]; return q != null ? q : (p ? p[2] : 1); }
+  function estimate(list) { return list.reduce(function (sum, i) { var p = PRICES[i.n]; return sum + (p ? p[0] * qtyOf(i) : 0); }, 0); }
+  function metaHtml(i) {
+    var parts = [];
+    if (i.q) parts.push(esc(i.q));
+    var p = PRICES[i.n];
+    if (p) parts.push("כ-" + fmt(p[0]) + " ₪ " + (p[1] === "ק\"ג" ? "לק\"ג" : "ליחידה"));
+    return parts.length ? '<br><span class="meta">' + parts.join(" · ") + "</span>" : "";
+  }
+
+  var state = { need: {}, got: {}, custom: [], week: "", checkedAt: "", notes: {}, qty: {}, deleted: {} };
+  var ui = { mode: "home", showRare: true, collapsed: {}, armed: "", armTimer: null };
+  var ref = null, writing = false, dirty = false, unsub = null;
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]; }); }
+  function setStatus(t) { $("status").textContent = t || ""; }
+
+  function allItems() {
+    return ITEMS.concat((state.custom || []).map(function (c) { return { id: c.id, s: c.s, n: c.n, q: "", t: 0, custom: true }; }))
+      .filter(function (i) { return !state.deleted[i.id]; });
+  }
+
+  function updateTotals() {
+    var items = allItems();
+    var needN = items.filter(function (i) { return state.need[i.id]; });
+    var gotN = needN.filter(function (i) { return state.got[i.id]; }).length;
+    var est = Math.round(estimate(needN));
+    var estTxt = est ? " · בערך <b>" + est + " ₪</b>" : "";
+    $("stat").innerHTML = ui.mode === "home"
+      ? "חסרים: <b>" + needN.length + "</b>" + estTxt
+      : "בעגלה: <b>" + gotN + "</b> מתוך <b>" + needN.length + "</b>" + estTxt;
+    var banner = $("banner");
+    var bannerParts = [];
+    if (state.checkedAt) {
+      bannerParts.push("הבדיקה בבית הושלמה ב-" + new Date(state.checkedAt).toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" }));
+    }
+    if (needN.length) {
+      bannerParts.push((needN.length === 1 ? "חסר " : "חסרים ") + cnt(needN.length) + (est ? ", הערכת עלות: בערך " + est + " ₪" : ""));
+    }
+    banner.textContent = bannerParts.length ? bannerParts.join(". ") + "." : "";
+    banner.hidden = !bannerParts.length;
+  }
+
+  function visibleSections(items) {
+    var out = [];
+    SECTIONS.forEach(function (name, si) {
+      var rows = items.filter(function (i) {
+        if (i.s !== si) return false;
+        if (ui.mode === "store") return !!state.need[i.id];
+        return ui.showRare || i.t !== 4 || state.need[i.id];
+      });
+      if (rows.length) out.push({ si: si, name: name, rows: rows });
+    });
+    return out;
+  }
+
+  function render() {
+    var items = allItems();
+    updateTotals();
+    $("tab-home").setAttribute("aria-pressed", ui.mode === "home");
+    $("tab-store").setAttribute("aria-pressed", ui.mode === "store");
+    $("week").textContent = state.week ? "שבוע שהתחיל ב-" + state.week + "." : "";
+    var secs = visibleSections(items);
+    var anyOpen = secs.some(function (s) { return !ui.collapsed[s.si]; });
+    $("tools").innerHTML = (ui.mode === "home"
+      ? '<button class="chip" id="rare" aria-pressed="' + ui.showRare + '">להציג גם "לפעמים"</button>' +
+        '<button class="chip" id="done" aria-pressed="' + !!state.checkedAt + '">' + (state.checkedAt ? "סימנתי הכול. לחיצה מבטלת" : "סיימתי לסמן מה חסר") + "</button>"
+      : "") + '<button class="chip" id="fold">' + (anyOpen ? "לסגור את כל המחלקות" : "לפתוח את כל המחלקות") + "</button>";
+    $("hint").textContent = ui.mode === "home"
+      ? "מסמנים כל מוצר שחסר בבית. כשמסיימים, לוחצים על \"סיימתי לסמן מה חסר\"."
+      : "מסמנים כל מוצר שהגיע לעגלה. מוצר מסומן נחצה ברשימה.";
+    var removed = Object.keys(state.deleted).length;
+    $("restore").hidden = !removed;
+    $("restore").textContent = "לשחזר מוצרים שהוסרו (" + removed + ")";
+    var html = "";
+    secs.forEach(function (s) {
+      var open = !ui.collapsed[s.si];
+      var marked = s.rows.filter(function (i) { return ui.mode === "home" ? state.need[i.id] : state.got[i.id]; }).length;
+      html += '<section class="aisle"><h2><button type="button" class="aisle-toggle" data-sec="' + s.si + '" aria-expanded="' + open + '"><span class="chev">' + (open ? "▾" : "◂") + "</span>" +
+        esc(s.name) + "<small>" + s.rows.length + (marked ? " · " + marked + (ui.mode === "home" ? " חסרים" : " בעגלה") : "") + "</small></button></h2>";
+      if (open) {
+        html += "<ul>";
+        s.rows.forEach(function (i) {
+          var on = ui.mode === "home" ? !!state.need[i.id] : !!state.got[i.id];
+          var cls = ui.mode === "home" ? (state.need[i.id] ? "is-need" : "") : (state.got[i.id] ? "is-got" : "");
+          var tag = i.custom ? "שלך" : TIERS[i.t];
+          var p = PRICES[i.n];
+          var unit = p ? p[1] : "יח'";
+          var qv = state.qty[i.id] != null ? state.qty[i.id] : "";
+          var armed = ui.armed === i.id;
+          html += '<li class="' + cls + '"><label class="row"><input type="checkbox" data-id="' + i.id + '"' + (on ? " checked" : "") + ">" +
+            '<span class="txt"><span class="name">' + esc(i.n) + "</span>" + metaHtml(i) + "</span>" +
+            '<span class="tag t' + (i.t || 0) + '">' + tag + "</span></label>" +
+            '<div class="extra"><input type="text" class="note" data-note="' + i.id + '" value="' + esc(state.notes[i.id] || "") + '" placeholder="הערה" aria-label="הערה ל' + esc(i.n) + '">' +
+            '<label class="qty"><input type="number" class="qtyin" inputmode="decimal" min="0" step="' + (unit === "ק\"ג" ? "0.1" : "1") + '" data-qty="' + i.id + '" value="' + qv + '" placeholder="' + (p ? p[2] : "כמות") + '" aria-label="כמות ל' + esc(i.n) + '"><span>' + esc(unit) + "</span></label>" +
+            '<button type="button" class="del' + (armed ? " armed" : "") + '" data-del="' + i.id + '">' + (armed ? "לאשר הסרה" : "הסר") + "</button></div></li>";
+        });
+        html += "</ul>";
+      }
+      html += "</section>";
+    });
+    if (!html) html = '<div class="empty">' + (ui.mode === "store" ? "עוד לא סימנת מה חסר. עברי ל\"בדיקה בבית\" וסמני." : "אין מוצרים להצגה.") + "</div>";
+    $("list").innerHTML = html;
+    document.body.className = "mode-" + ui.mode;
+  }
+
+  function snapshot() { return { need: state.need, got: state.got, custom: state.custom, week: state.week, checkedAt: state.checkedAt, notes: state.notes, qty: state.qty, deleted: state.deleted }; }
+  function persist() {
+    dirty = true;
+    if (!ref) {
+      try { localStorage.setItem("shopping-state", JSON.stringify(snapshot())); }
+      catch (e) { setStatus("הדפדפן או האפליקציה כאן לא מאפשרים שמירה. הסימונים יישמרו רק עד סגירת הדף."); }
+      return;
+    }
+    if (!writing) flush();
+  }
+  async function flush() {
+    writing = true;
+    while (dirty) {
+      dirty = false;
+      try { await ref.set(snapshot()); setStatus(""); }
+      catch (e) {
+        // Shared save refused: stop listening so remote data cannot overwrite local marks, and keep working locally.
+        if (unsub) { unsub(); unsub = null; }
+        ref = null;
+        try { localStorage.setItem("shopping-state", JSON.stringify(snapshot())); } catch (e2) {}
+        setStatus("השמירה המשותפת נדחתה. בעל הדף צריך לתת לחשבון הזה הרשאת Editor בתפריט Share. בינתיים הסימונים נשמרים רק כאן.");
+      }
+    }
+    writing = false;
+  }
+  function applyRemote(src) {
+    var d = JSON.parse(JSON.stringify(src || {})); // shared snapshots are read-only; always work on a copy
+    state.need = d.need || {}; state.got = d.got || {}; state.custom = d.custom || []; state.week = d.week || ""; state.checkedAt = d.checkedAt || ""; state.notes = d.notes || {}; state.qty = d.qty || {}; state.deleted = d.deleted || {};
+  }
+
+  $("list").addEventListener("change", function (e) {
+    var noteId = e.target && e.target.getAttribute("data-note");
+    if (noteId) {
+      var v = e.target.value.trim();
+      if (v) state.notes[noteId] = v; else delete state.notes[noteId];
+      persist(); return;
+    }
+    var qtyId = e.target && e.target.getAttribute("data-qty");
+    if (qtyId) {
+      var n = parseFloat(e.target.value);
+      if (isFinite(n) && n >= 0) state.qty[qtyId] = n; else delete state.qty[qtyId];
+      updateTotals(); persist(); return;
+    }
+    var id = e.target && e.target.getAttribute("data-id");
+    if (!id) return;
+    var key = ui.mode === "home" ? "need" : "got";
+    if (e.target.checked) state[key][id] = true; else delete state[key][id];
+    if (ui.mode === "home" && !e.target.checked) delete state.got[id];
+    render(); persist();
+  });
+  function saveCollapsed() { try { localStorage.setItem("shopping-collapsed", JSON.stringify(ui.collapsed)); } catch (e) {} }
+  try { var cs = localStorage.getItem("shopping-collapsed"); if (cs) ui.collapsed = JSON.parse(cs) || {}; } catch (e) {}
+  function removeItem(id) {
+    var wasCustom = (state.custom || []).some(function (c) { return c.id === id; });
+    state.custom = (state.custom || []).filter(function (c) { return c.id !== id; });
+    if (!wasCustom) state.deleted[id] = true; // an item you added yourself is simply gone; built-in items can be restored
+    delete state.need[id]; delete state.got[id]; delete state.notes[id]; delete state.qty[id];
+    ui.armed = ""; clearTimeout(ui.armTimer);
+    render(); persist();
+  }
+  $("list").addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest("[data-del],[data-sec]") : null;
+    if (!t) return;
+    var sec = t.getAttribute("data-sec");
+    if (sec !== null) { ui.collapsed[sec] = !ui.collapsed[sec]; saveCollapsed(); render(); return; }
+    var id = t.getAttribute("data-del");
+    if (ui.armed !== id) {
+      ui.armed = id; clearTimeout(ui.armTimer);
+      ui.armTimer = setTimeout(function () { ui.armed = ""; render(); }, 4000);
+      render(); return;
+    }
+    removeItem(id);
+  });
+  $("restore").onclick = function () { state.deleted = {}; render(); persist(); };
+  $("tools").addEventListener("click", function (e) {
+    if (e.target.id === "fold") {
+      var secs = visibleSections(allItems());
+      var anyOpen = secs.some(function (s) { return !ui.collapsed[s.si]; });
+      secs.forEach(function (s) { ui.collapsed[s.si] = anyOpen; });
+      saveCollapsed(); render(); return;
+    }
+    if (e.target.id === "rare") { ui.showRare = !ui.showRare; render(); }
+    if (e.target.id === "done") { state.checkedAt = state.checkedAt ? "" : new Date().toISOString(); render(); persist(); }
+  });
+  $("tab-home").onclick = function () { ui.mode = "home"; render(); };
+  $("tab-store").onclick = function () { ui.mode = "store"; render(); };
+
+  SECTIONS.forEach(function (s, i) { var o = document.createElement("option"); o.value = i; o.textContent = s; $("add-sec").appendChild(o); });
+  $("add").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var n = $("add-name").value.trim(); if (!n) return;
+    var id = "c" + Date.now();
+    state.custom = (state.custom || []).concat([{ id: id, s: Number($("add-sec").value), n: n }]);
+    state.need[id] = true;
+    $("add-name").value = ""; render(); persist();
+  });
+
+  var armed = false, armTimer = null;
+  $("reset").onclick = function () {
+    var b = $("reset");
+    if (!armed) { armed = true; b.textContent = "לוחצים שוב כדי לנקות"; armTimer = setTimeout(function () { armed = false; b.textContent = "שבוע חדש: לנקות הכול"; }, 4000); return; }
+    clearTimeout(armTimer); armed = false; b.textContent = "שבוע חדש: לנקות הכול";
+    state.need = {}; state.got = {}; state.checkedAt = ""; state.notes = {}; state.qty = {};
+    state.week = new Date().toLocaleDateString("he-IL");
+    ui.mode = "home"; render(); persist();
+  };
+
+  render();
+  setStatus("טוען את הרשימה השמורה...");
+  var loadTimer = setTimeout(function () { setStatus("עדיין לא הצלחתי להגיע לשמירה. מה שתסמני יישמר כשהחיבור יחזור."); }, 10000);
+  function fallbackLocal() {
+    clearTimeout(loadTimer);
+    try { var raw = localStorage.getItem("shopping-state"); if (raw) applyRemote(JSON.parse(raw)); } catch (e) {}
+    setStatus("הרשימה נשמרת רק במכשיר הזה." + (typeof why === "string" && why ? " " + why : "")); render();
+  }
+  if (window.claude && window.claude.use) {
+    // The owner and anyone invited with permission to change data use the shared store; everyone else works locally on their own device.
+    var why = "";
+    window.claude.use("user").then(function (u) {
+      var shared = false;
+      shared = !!u; // any signed-in viewer tries the shared list; a refused save falls back to this device (see flush)
+      why = shared ? "" : "לא זוהה חשבון מחובר, ולכן הסימונים נשארים כאן בלבד.";
+      return shared ? window.claude.use("db") : null;
+    }, function () { return null; }).then(function (db) {
+      if (!db) { fallbackLocal(why); return; }
+      ref = db.doc("list/state");
+      unsub = ref.onSnapshot(function (snap) {
+        if (!snap.metadata.fromCache) { clearTimeout(loadTimer); setStatus("מחובר לרשימה המשותפת."); }
+        if (writing || dirty) return;
+        if (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains("note")) return;
+        if (snap.exists) { applyRemote(snap.data()); render(); }
+      }, function () { clearTimeout(loadTimer); setStatus("אי אפשר להגיע לשמירה כרגע."); });
+    }, fallbackLocal);
+  } else { fallbackLocal(); }
+})();
+</script>
