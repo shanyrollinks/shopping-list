@@ -22,3 +22,5 @@
 git clone https://github.com/shanyrollinks/shopping-list ~/.claude/skills/shopping-list
 ```
 דורש python3. הסקריפט `scripts/shopping.py` מאחד קבלות (`aggregate`) ובונה את הדף מתבנית (`render`).
+
+בדיקה מהירה שהכול עובד: `python3 tests/run.py`.

@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
 """כלי עזר לסקיל shopping-list.
 
-aggregate RECEIPT.json [RECEIPT.json ...]   -> מדפיס JSON של מוצרים מאוחדים (שם, כמה קניות, מחיר, כמות טיפוסית, רמה)
+aggregate [--out ITEMS.json] RECEIPT.json [RECEIPT.json ...]
+                                           -> מוצרים מאוחדים (שם, כמה קניות, מחיר, כמות טיפוסית, רמה).
+                                              אפשר לכתוב receipt-*.json (הכוכבית נפתחת כאן, גם בווינדוס).
+                                              בלי --out התוצאה מודפסת למסך
 render CURATED.json OUT.html               -> ממלא את template.html ומוציא את דף הרשימה
 """
-import json, sys, statistics, pathlib, re, hashlib, html as htmllib
+import json, sys, statistics, pathlib, re, hashlib, glob, html as htmllib
+
+# קונסולות ישנות (בעיקר בווינדוס) לא מוגדרות ל-UTF-8, ועברית קורסת בהן
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 HERE = pathlib.Path(__file__).resolve().parent.parent
 
@@ -29,6 +39,7 @@ def num(value):
 
 
 def load(path):
+    path = str(pathlib.Path(path).expanduser())
     try:
         return json.load(open(path, encoding="utf-8"))
     except FileNotFoundError:
@@ -44,7 +55,23 @@ def tier_for(share):
     return 4
 
 
+def expand(args):
+    """פותח כוכביות לבד (ב-cmd ובפאוורשל הן לא נפתחות) ומסיר כפילויות."""
+    paths = []
+    for a in args:
+        a = str(pathlib.Path(a).expanduser())
+        found = sorted(glob.glob(a)) if any(c in a for c in "*?[") else [a]
+        paths.extend(found or [a])
+    seen, out = set(), []
+    for p in paths:
+        if p not in seen:
+            seen.add(p)
+            out.append(p)
+    return out
+
+
 def aggregate(paths):
+    paths = expand(paths)
     receipts = [load(p) for p in paths]
     n = len(receipts)
     if n < 3:
@@ -130,9 +157,21 @@ def render(curated_path, out_path):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 3 and sys.argv[1] == "aggregate":
-        print(json.dumps(aggregate(sys.argv[2:]), ensure_ascii=False, indent=1))
-    elif len(sys.argv) == 4 and sys.argv[1] == "render":
-        render(sys.argv[2], sys.argv[3])
+    argv = sys.argv[1:]
+    if len(argv) >= 2 and argv[0] == "aggregate":
+        rest = argv[1:]
+        out_path = None
+        if rest[0] == "--out":
+            if len(rest) < 3:
+                die("אחרי --out צריך שם קובץ, ואחריו הקבלות.")
+            out_path, rest = rest[1], rest[2:]
+        text = json.dumps(aggregate(rest), ensure_ascii=False, indent=1)
+        if out_path:
+            pathlib.Path(out_path).expanduser().write_text(text, encoding="utf-8")
+            print("נכתב", out_path)
+        else:
+            print(text)
+    elif len(argv) == 3 and argv[0] == "render":
+        render(str(pathlib.Path(argv[1]).expanduser()), str(pathlib.Path(argv[2]).expanduser()))
     else:
         sys.exit(__doc__)
